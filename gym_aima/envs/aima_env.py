@@ -9,20 +9,17 @@ from gym.envs.toy_text import discrete
 
 LEFT, DOWN, RIGHT, UP = range(4)
 
-MAPS = {
-    "3x4": [
-        "FFFG",
-        "FWFH",
-        "SFFF",
-    ],
-}
 
 class AIMAEnv(discrete.DiscreteEnv):
 
     metadata = {'render.modes': ['human', 'ansi']}
 
-    def __init__(self, map_name="3x4", noise=0.2, living_rew=0.0):
-        desc = MAPS[map_name]
+    def __init__(self, map_name="3x4", noise=0.2, living_rew=0.0, sink=False):
+        desc = [
+            "FFFG",
+            "FWFH",
+            "SFFF",
+        ]
         self.desc = desc = np.asarray(desc, dtype='c')
         self.nrow, self.ncol = nrow, ncol = desc.shape
 
@@ -54,17 +51,34 @@ class AIMAEnv(discrete.DiscreteEnv):
                 for a in range(4):
                     li = P[s][a]
                     letter = desc[row, col]
-                    if letter in b'GHW':
-                        li.append((1.0, s, 0, True))
+                    if sink:
+                        if letter in b'W':
+                            li.append((1.0, s, 0, True))
+                        elif letter in b'G':
+                            li.append((1.0, 5, 1, True))
+                        elif letter in b'H':
+                            li.append((1.0, 5, -1, True))
+                        else:
+                            for b in [(a-1) % 4, a, (a+1) % 4]:
+                                newrow, newcol = inc(row, col, b)
+                                newstate = to_s(newrow, newcol)
+                                newletter = desc[newrow, newcol]
+                                newstate = s if newletter in b'W' else newstate
+                                rew = living_rew
+                                li.append((np.round(1.0-noise if a == b else noise/2., 2), newstate, rew, False))
                     else:
-                        for b in [(a-1) % 4, a, (a+1) % 4]:
-                            newrow, newcol = inc(row, col, b)
-                            newstate = to_s(newrow, newcol)
-                            newletter = desc[newrow, newcol]
-                            newstate = s if newletter in b'W' else newstate
-                            done = bytes(newletter) in b'GH'
-                            rew = 1.0 if newletter == b'G' else -1.0 if newletter == b'H' else living_rew
-                            li.append((np.round(1.0-noise if a == b else noise/2., 2), newstate, rew, done))
+                        if letter in b'GHW':
+                            li.append((1.0, s, 0, True))
+                        else:
+                            for b in [(a-1) % 4, a, (a+1) % 4]:
+                                newrow, newcol = inc(row, col, b)
+                                newstate = to_s(newrow, newcol)
+                                newletter = desc[newrow, newcol]
+                                newstate = s if newletter in b'W' else newstate
+                                done = bytes(newletter) in b'GH'
+                                rew = living_rew
+                                rew += 1.0 if newletter == b'G' else -1.0 if newletter == b'H' else 0
+                                li.append((np.round(1.0-noise if a == b else noise/2., 2), newstate, rew, done))
 
         super(AIMAEnv, self).__init__(nS, nA, P, isd)
 
