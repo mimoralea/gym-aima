@@ -3,7 +3,7 @@ from gym.envs.registration import register
 
 # Classic Gridworld environments
 register(
-    id='NorvigRussellGridworld-v0',
+    id='RussellNorvigGridworld-v0',
     # To reproduce must use gamma of 1.0 (no discount)
     entry_point='gym_aima.envs:AIMAEnv',
     # With or without the sink state it will work
