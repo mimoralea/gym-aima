@@ -1,7 +1,7 @@
 # gym-aima
 
 Package implementing the Gridworld environment that appears in
-Norvig & Russell's book. It registers environments to
+Russell & Norvig's book. It registers environments to
 reproduce the results of the book and also the results
 in Berkeley's AI lectures by Abbeel & Klein.
 
@@ -47,8 +47,8 @@ def print_policy(pi, P):
             print(str(key).zfill(2), arrs[value], end=" ")
         if (key + 1) % 4 == 0: print("|")
         
-# reproduce Norvig & Russell
-env = gym.make('NorvigRussellGridworld-v0')
+# reproduce Russell & Norvig
+env = gym.make('RussellNorvigGridworld-v0')
 V_best_v, pi_best_v = value_iteration(env.env.P, gamma=1.0)
 print(V_best_v)
 print_policy(pi_best_v, env.env.P)
