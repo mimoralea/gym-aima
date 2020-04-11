@@ -34,7 +34,7 @@ def value_iteration(P, gamma=0.99, theta = 1e-10):
         if np.max(np.abs(V - np.max(Q, axis=1))) < theta:
             break
         V = np.max(Q, axis=1)
-    pi = {s:a for s, a in enumerate(np.argmax(Q, axis=1))}
+    pi = lambda s : {s:a for s, a in enumerate(np.argmax(Q, axis=1))}[s]
     return V, pi
     
 def print_policy(pi, P):
