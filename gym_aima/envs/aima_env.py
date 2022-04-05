@@ -3,14 +3,16 @@ from contextlib import closing
 
 import numpy as np
 from six import StringIO, b
+from typing import Optional
 
-from gym import utils
-from gym.envs.toy_text import discrete
+import gym
+from gym import spaces, utils
+from gym.envs.toy_text.utils import categorical_sample
 
 LEFT, DOWN, RIGHT, UP = range(4)
 
 
-class AIMAEnv(discrete.DiscreteEnv):
+class AIMAEnv(gym.Env):
 
     metadata = {'render.modes': ['human', 'ansi']}
 
@@ -23,13 +25,15 @@ class AIMAEnv(discrete.DiscreteEnv):
         self.desc = desc = np.asarray(desc, dtype='c')
         self.nrow, self.ncol = nrow, ncol = desc.shape
 
-        nA = 4
-        nS = nrow * ncol
+        self.nA = nA = 4
+        self.nS = nS = nrow * ncol
 
-        isd = np.array(desc == b'S').astype('float64').ravel()
-        isd /= isd.sum()
+        self.isd = np.array(desc == b'S').astype('float64').ravel()
+        self.isd /= self.isd.sum()
 
-        P = {s : {a : [] for a in range(nA)} for s in range(nS)}
+        self.lastaction = None
+
+        self.P = {s: {a: [] for a in range(nA)} for s in range(nS)}
 
         def to_s(row, col):
             return row*ncol + col
@@ -49,7 +53,7 @@ class AIMAEnv(discrete.DiscreteEnv):
             for col in range(ncol):
                 s = to_s(row, col)
                 for a in range(4):
-                    li = P[s][a]
+                    li = self.P[s][a]
                     letter = desc[row, col]
                     if sink:
                         if letter in b'W':
@@ -80,7 +84,30 @@ class AIMAEnv(discrete.DiscreteEnv):
                                 rew += 1.0 if newletter == b'G' else -1.0 if newletter == b'H' else 0
                                 li.append((np.round(1.0-noise if a == b else noise/2., 2), newstate, rew, done))
 
-        super(AIMAEnv, self).__init__(nS, nA, P, isd)
+        self.action_space = spaces.Discrete(self.nA)
+        self.observation_space = spaces.Discrete(self.nS)
+
+        self.s = categorical_sample(self.isd, self.np_random)
+
+    def step(self, action):
+        transitions = self.P[self.s][action]
+        i = categorical_sample([t[0] for t in transitions], self.np_random)
+        p, s, r, d = transitions[i]
+        self.s = s
+        self.lastaction = action
+        return int(s), r, d, {"prob": p}
+
+    def reset(
+        self,
+        *,
+        seed: Optional[int] = None,
+        return_info: bool = False,
+        options: Optional[dict] = None,
+    ):
+        super().reset(seed=seed)
+        self.s = categorical_sample(self.isd, self.np_random)
+        self.lastaction = None
+        return int(self.s)
 
     def render(self, mode='human'):
         outfile = StringIO() if mode == 'ansi' else sys.stdout
